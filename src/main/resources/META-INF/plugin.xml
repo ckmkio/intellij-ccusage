@@ -1,0 +1,53 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>io.ckmk.intellij-ccusage</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
+    <name>Claude Code Usage</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor url="https://github.com/kelvincheong/intellij-ccusage">Kelvin Cheong</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
+    <description><![CDATA[
+        Display live Claude Code usage statistics in the IDE status bar.<br>
+        <em>Shows session data, token usage, reset times, and AI model information using the ccusage library.</em><br><br>
+        
+        <strong>License:</strong> MIT License<br>
+        Copyright (c) 2025 Kelvin Cheong<br><br>
+        
+        This software is provided under the MIT License. See the LICENSE file for full license text.
+    ]]></description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- Extension points defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Status Bar Widget Factory -->
+        <statusBarWidgetFactory 
+            id="CcUsageStatusBarWidget" 
+            implementation="io.ckmk.intellijccusage.ui.CcUsageStatusBarWidgetFactory" 
+            order="before com.intellij.openapi.wm.impl.status.PositionPanel"/>
+        
+        <!-- Application Service -->
+        <applicationService 
+            serviceInterface="io.ckmk.intellijccusage.service.CcUsageService"
+            serviceImplementation="io.ckmk.intellijccusage.service.CcUsageService"/>
+        
+        <!-- Settings Service -->
+        <applicationService 
+            serviceInterface="io.ckmk.intellijccusage.settings.CcUsageSettings"
+            serviceImplementation="io.ckmk.intellijccusage.settings.CcUsageSettings"/>
+        
+        <!-- Notification Group -->
+        <notificationGroup id="ccusage.notifications" 
+                          displayType="BALLOON" 
+                          key="ccusage.notification.group.name"/>
+    </extensions>
+</idea-plugin>
