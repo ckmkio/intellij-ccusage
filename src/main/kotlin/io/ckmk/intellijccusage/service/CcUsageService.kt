@@ -23,17 +23,17 @@ class CcUsageService {
         try {
             val processBuilder = ProcessBuilder()
             
+            // Set up environment to include common Node.js paths
+            setupNodeEnvironment(processBuilder)
+            
             // Try different commands based on system setup
-            val commands = listOf(
-                listOf("npx", "ccusage", "blocks", "--live", "--json"),
-                listOf("bunx", "ccusage", "blocks", "--live", "--json"),
-                listOf("ccusage", "blocks", "--live", "--json")
-            )
+            val commands = buildCommandList()
             
             var lastException: Exception? = null
             
             for (command in commands) {
                 try {
+                    logger.info("Attempting command: ${command.joinToString(" ")}")
                     processBuilder.command(command)
                     processBuilder.redirectErrorStream(true)
                     
@@ -103,15 +103,12 @@ class CcUsageService {
     
     fun isCcUsageAvailable(): Boolean {
         return try {
-            val commands = listOf(
-                listOf("npx", "ccusage", "--version"),
-                listOf("bunx", "ccusage", "--version"),
-                listOf("ccusage", "--version")
-            )
+            val commands = buildCommandList("--version")
             
             for (command in commands) {
                 try {
                     val processBuilder = ProcessBuilder(command)
+                    setupNodeEnvironment(processBuilder)
                     processBuilder.redirectErrorStream(true)
                     val process = processBuilder.start()
                     val completed = process.waitFor(5, TimeUnit.SECONDS)
@@ -127,6 +124,98 @@ class CcUsageService {
         } catch (e: Exception) {
             logger.debug("Error checking ccusage availability", e)
             false
+        }
+    }
+    
+    private fun buildCommandList(vararg extraArgs: String): List<List<String>> {
+        val baseArgs = if (extraArgs.isEmpty()) {
+            listOf("blocks", "--live", "--json")
+        } else {
+            extraArgs.toList()
+        }
+        
+        val commands = mutableListOf<List<String>>()
+        
+        // Try with full paths first
+        val homeDir = System.getProperty("user.home")
+        val nvmDir = java.io.File("$homeDir/.nvm/versions/node")
+        if (nvmDir.exists()) {
+            nvmDir.listFiles()?.forEach { versionDir ->
+                if (versionDir.isDirectory) {
+                    val ccusagePath = java.io.File(versionDir, "bin/ccusage")
+                    val npxPath = java.io.File(versionDir, "bin/npx")
+                    if (ccusagePath.exists()) {
+                        commands.add(listOf(ccusagePath.absolutePath) + baseArgs)
+                    }
+                    if (npxPath.exists()) {
+                        commands.add(listOf(npxPath.absolutePath, "ccusage") + baseArgs)
+                    }
+                }
+            }
+        }
+        
+        // Try standard commands
+        commands.addAll(listOf(
+            listOf("npx", "ccusage") + baseArgs,
+            listOf("bunx", "ccusage") + baseArgs,
+            listOf("ccusage") + baseArgs
+        ))
+        
+        return commands
+    }
+    
+    private fun setupNodeEnvironment(processBuilder: ProcessBuilder) {
+        val currentEnv = processBuilder.environment()
+        val currentPath = currentEnv["PATH"] ?: System.getenv("PATH") ?: ""
+        
+        // Try to detect Node.js installation dynamically
+        val possibleNodePaths = mutableListOf<String>()
+        
+        // Check NVM installations
+        val homeDir = System.getProperty("user.home")
+        val nvmDir = java.io.File("$homeDir/.nvm/versions/node")
+        if (nvmDir.exists()) {
+            nvmDir.listFiles()?.forEach { versionDir ->
+                if (versionDir.isDirectory) {
+                    val binDir = java.io.File(versionDir, "bin")
+                    if (binDir.exists()) {
+                        possibleNodePaths.add(binDir.absolutePath)
+                    }
+                }
+            }
+        }
+        
+        // Add common installation paths
+        possibleNodePaths.addAll(listOf(
+            "/usr/local/bin",
+            "/opt/homebrew/bin", 
+            "$homeDir/.local/bin",
+            "/usr/bin"
+        ))
+        
+        // Find paths that exist and contain ccusage
+        val validPaths = possibleNodePaths.filter { path ->
+            val pathDir = java.io.File(path)
+            pathDir.exists() && (
+                java.io.File(pathDir, "ccusage").exists() || 
+                java.io.File(pathDir, "npx").exists() ||
+                java.io.File(pathDir, "node").exists()
+            )
+        }
+        
+        // Add valid paths to environment
+        if (validPaths.isNotEmpty()) {
+            val pathList = currentPath.split(":").toMutableList()
+            validPaths.forEach { path ->
+                if (!pathList.contains(path)) {
+                    pathList.add(0, path) // Add to beginning for priority
+                }
+            }
+            val newPath = pathList.joinToString(":")
+            currentEnv["PATH"] = newPath
+            logger.info("Updated PATH for ccusage with: ${validPaths.joinToString(", ")}")
+        } else {
+            logger.warn("No valid Node.js paths found for ccusage")
         }
     }
 }
