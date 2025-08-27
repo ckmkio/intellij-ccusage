@@ -10,27 +10,25 @@ data class CcUsageResponse(
     val blocks: List<CcUsageBlock> = emptyList()
 ) {
     fun getDisplayText(): String {
-        val activeBlock = blocks.firstOrNull { !it.isGap && it.isActive != false }
-        val latestBlock = blocks.filterNot { it.isGap }.maxByOrNull { it.startTime ?: "" }
-        val currentBlock = activeBlock ?: latestBlock
+        val activeBlock = blocks.firstOrNull { !it.isGap && it.isActive == true }
         
-        if (currentBlock == null) return "Claude: No Data"
+        if (activeBlock == null) return "Claude: No active session"
         
         // Calculate usage percentage based on max tokens from historical data
         // Find the maximum tokens used in any single block to determine the limit
         val maxTokensLimit = blocks.filterNot { it.isGap }
             .maxOfOrNull { it.totalTokens } ?: 0L
         
-        val usagePercentage = if (currentBlock.totalTokens > 0 && maxTokensLimit > 0) {
-            val percentage = (currentBlock.totalTokens.toDouble() / maxTokensLimit.toDouble()) * 100
+        val usagePercentage = if (activeBlock.totalTokens > 0 && maxTokensLimit > 0) {
+            val percentage = (activeBlock.totalTokens.toDouble() / maxTokensLimit.toDouble()) * 100
             "${String.format("%.1f", percentage)}%"
         } else {
             "0%"
         }
         
-        // Show token usage from current block
-        val usedTokens = if (currentBlock.totalTokens > 0) {
-            formatNumber(currentBlock.totalTokens)
+        // Show token usage from active block
+        val usedTokens = if (activeBlock.totalTokens > 0) {
+            formatNumber(activeBlock.totalTokens)
         } else {
             "0"
         }
