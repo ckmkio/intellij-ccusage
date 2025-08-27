@@ -17,7 +17,7 @@ dependencies {
 }
 
 intellij {
-  version.set("2024.1.6")
+  version.set("2025.2")
   type.set("IC")
   
   plugins.set(listOf(
@@ -28,7 +28,7 @@ intellij {
 tasks {
   patchPluginXml {
     sinceBuild.set("241")
-    untilBuild.set("251.*")
+    untilBuild.set("252.*")
     
     changeNotes.set("""
       Initial version of Claude Code Usage plugin.
